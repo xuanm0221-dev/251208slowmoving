@@ -15,6 +15,7 @@ import ItemTabs from "./ItemTabs";
 import SalesTable from "./SalesTable";
 import InventoryTable from "./InventoryTable";
 import StockWeeksTable from "./StockWeeksTable";
+import StockWeeksSummary from "./StockWeeksSummary";
 import WarningBanner from "./WarningBanner";
 import StockWeekInput from "./StockWeekInput";
 import CollapsibleSection from "./CollapsibleSection";
@@ -114,6 +115,17 @@ export default function BrandSalesPage({ brand, title }: BrandSalesPageProps) {
           </div>
         ) : (
           <>
+            {/* 0. 재고주수 Summary 섹션 */}
+            {inventoryBrandData && salesBrandData && inventoryData?.daysInMonth && (
+              <StockWeeksSummary
+                brand={brand}
+                inventoryBrandData={inventoryBrandData}
+                salesBrandData={salesBrandData}
+                daysInMonth={inventoryData.daysInMonth}
+                stockWeek={stockWeek}
+              />
+            )}
+
             {/* 1. 아이템 탭 + Stock Week 입력 */}
             <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
               <ItemTabs selectedTab={selectedTab} onTabChange={setSelectedTab} brand={brand} />
