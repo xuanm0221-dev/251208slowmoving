@@ -122,10 +122,10 @@ export default function StockWeeksChart({
         const retailStockCore = calculateRetailStock(invData.OR_sales_core || 0);
         const retailStockOutlet = calculateRetailStock(invData.OR_sales_outlet || 0);
         const warehouseStockCore = (invData.HQ_OR_core || 0) - retailStockCore;
-        const warehouseStockOutlet = (invData.HQ_OR_outlet || 0) - retailStockOutlet;
+        // 아울렛은 본사재고(HQ_OR_outlet)를 직접 사용 (본사물류재고 아님)
         return {
           stockCore: Math.max(0, warehouseStockCore),
-          stockOutlet: Math.max(0, warehouseStockOutlet),
+          stockOutlet: invData.HQ_OR_outlet || 0,  // 본사재고 직접 사용
           // 창고 주력: 전체 판매로 계산 (유지)
           salesCore: slsData.전체_core || 0,
           // 창고 아울렛: 직영판매(OR_sales)만 사용 (대리상판매 제외)

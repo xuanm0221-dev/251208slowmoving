@@ -200,7 +200,7 @@ export default function BrandSalesPage({ brand, title }: BrandSalesPageProps) {
                       <span className="text-gray-500">본사물류주수:</span>{" "}
                       <div className="text-gray-600 mt-1">
                         <div>• 주력: 본사물류재고 ÷ (전체판매 ÷ 일수 × 7) * 전체판매=직영+대리상 *</div>
-                        <div>• 아울렛: 본사물류재고 ÷ (직영판매 ÷ 일수 × 7)</div>
+                        <div>• 아울렛: 본사재고 ÷ (직영판매 ÷ 일수 × 7)</div>
                       </div>
                     </div>
                   </div>
