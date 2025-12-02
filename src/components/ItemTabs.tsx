@@ -10,6 +10,9 @@ interface ItemTabsProps {
   // 모두비교 모드
   showAllItems: boolean;
   setShowAllItems: (show: boolean) => void;
+  // 성장률 관련 props
+  growthRate: number;
+  setGrowthRate: (value: number) => void;
 }
 
 export default function ItemTabs({ 
@@ -18,6 +21,8 @@ export default function ItemTabs({
   brand,
   showAllItems,
   setShowAllItems,
+  growthRate,
+  setGrowthRate,
 }: ItemTabsProps) {
   // 현재 브랜드의 색상 정보 가져오기
   const brandInfo = BRANDS.find(b => b.key === brand);
@@ -63,6 +68,36 @@ export default function ItemTabs({
         <span>📊</span>
         <span>재고주수 한번에 보기</span>
       </button>
+
+      {/* 성장률 입력 필드 */}
+      <div className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200 shadow-sm">
+        <div className="flex items-center gap-2">
+          <span className="text-blue-600 text-lg">📈</span>
+          <label className="text-sm font-medium text-gray-700 whitespace-nowrap">
+            성장률
+          </label>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <input
+            type="number"
+            value={growthRate}
+            onChange={(e) => {
+              const value = parseFloat(e.target.value);
+              if (!isNaN(value) && value > 0) {
+                setGrowthRate(value);
+              }
+            }}
+            className="w-16 px-3 py-1.5 bg-white border border-blue-300 rounded-md text-sm font-semibold text-gray-800 text-center focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+            min="1"
+            step="1"
+            title="전년동월 대비 성장률 (%)"
+          />
+          <span className="text-xs text-gray-500 font-medium">%</span>
+        </div>
+        <span className="text-xs text-gray-500 ml-1" title="전년동월 대비 성장률">
+          (전년동월 대비)
+        </span>
+      </div>
     </div>
   );
 }

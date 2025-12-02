@@ -26,6 +26,7 @@ import WarningBanner from "./WarningBanner";
 import StockWeekInput from "./StockWeekInput";
 import CollapsibleSection from "./CollapsibleSection";
 import ForecastInventoryTable from "./ForecastInventoryTable";
+import InventoryStockSummaryTable from "./InventoryStockSummaryTable";
 import { generateForecastForBrand } from "@/lib/forecast";
 import { buildInventoryForecastForTab } from "@/lib/inventoryForecast";
 
@@ -247,12 +248,15 @@ export default function BrandSalesPage({ brand, title }: BrandSalesPageProps) {
                 brand={brand}
                 showAllItems={showAllItemsInChart}
                 setShowAllItems={setShowAllItemsInChart}
+                growthRate={growthRate}
+                setGrowthRate={setGrowthRate}
               />
             </div>
 
             {/* 1.5. 월별 재고주수 추이 차트 */}
             {salesTabData && inventoryTabDataWithForecast && inventoryData?.daysInMonth && (
               <StockWeeksChart
+                key={`${selectedTab}-${growthRate}`}  // growthRate 변경 시 강제 재렌더링 (툴팁 업데이트)
                 selectedTab={selectedTab}
                 // 25.11~26.04 forecast 재고주수까지 포함
                 inventoryData={inventoryTabDataWithForecast}
@@ -278,8 +282,25 @@ export default function BrandSalesPage({ brand, title }: BrandSalesPageProps) {
               />
             )}
 
+            {/* 1.7. 재고,판매,입고 추이 표 */}
+            {inventoryTabDataWithForecast && salesTabData && (
+              <div className="card mb-4">
+                <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+                  <span className="text-indigo-500">📈</span>
+                  재고,판매,입고 추이
+                </h2>
+                <InventoryStockSummaryTable
+                  selectedTab={selectedTab}
+                  inventoryData={inventoryTabDataWithForecast}
+                  salesData={salesTabData}
+                  forecastInventoryData={forecastInventoryBrandData}
+                  months={allMonths}
+                />
+              </div>
+            )}
+
             {/* 2. 2025년 재고주수 표 */}
-            {salesTabData && inventoryTabData && inventoryData?.daysInMonth && (
+            {salesTabData && inventoryTabDataWithForecast && inventoryData?.daysInMonth && (
               <div className="card mb-4">
                 <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
                   <span className="text-yellow-500">📅</span>
@@ -360,26 +381,6 @@ export default function BrandSalesPage({ brand, title }: BrandSalesPageProps) {
                     <span><span className="text-gray-400">직영판매:</span> Channel 2 = OR</span>
                     <span><span className="text-gray-400">금액단위:</span> 1위안</span>
                   </>
-                }
-                headerAction={
-                  <div className="flex items-center gap-2">
-                    <label className="text-sm text-gray-600 whitespace-nowrap">
-                      성장률(전년동월 대비, %):
-                    </label>
-                    <input
-                      type="number"
-                      value={growthRate}
-                      onChange={(e) => {
-                        const value = parseFloat(e.target.value);
-                        if (!isNaN(value) && value > 0) {
-                          setGrowthRate(value);
-                        }
-                      }}
-                      className="w-20 px-2 py-1 border border-gray-300 rounded text-sm"
-                      min="1"
-                      step="0.1"
-                    />
-                  </div>
                 }
               >
                 {salesTabData && allMonths.length > 0 ? (
