@@ -118,7 +118,8 @@ export function computeStockWeeksForRowType(
   let frsSalesCoreWindow = 0;
   let frsSalesOutletWindow = 0;
   let warehouseSalesWindow = 0;
-  let orSalesOutletWindow = 0;
+  let orSalesCoreWindow = 0;       // 주력 직영판매 2개월 합계 (창고재고주수 주력용)
+  let orSalesOutletWindow = 0;     // 아울렛 직영판매 2개월 합계 (창고재고주수 아울렛용)
   let daysWindow = 0;
 
   monthsToUse.forEach((m) => {
@@ -140,9 +141,9 @@ export function computeStockWeeksForRowType(
       frsSalesOutletWindow += sd.FRS_outlet || 0;
       warehouseSalesWindow +=
         (sd.FRS_core || 0) + (sd.OR_core || 0) + (sd.OR_outlet || 0);
-    }
-    if (id) {
-      orSalesOutletWindow += id.OR_sales_outlet || 0;
+      // 창고재고주수 계산용 직영판매 데이터
+      orSalesCoreWindow += sd.OR_core || 0;      // 주력 직영판매
+      orSalesOutletWindow += sd.OR_outlet || 0;  // 아울렛 직영판매
     }
   });
 
@@ -161,10 +162,11 @@ export function computeStockWeeksForRowType(
     return null;
   }
 
-  // 직영재고 계산
+  // 직영재고 계산 (현재 월 기준 - 월별 일수 사용)
+  const currentMonthDays = daysInMonth[month] || getDaysInMonthFromYm(month);
   const calculateRetailStock = (orSales: number): number => {
-    if (days === 0) return 0;
-    return (orSales / days) * 7 * stockWeek;
+    if (currentMonthDays === 0) return 0;
+    return (orSales / currentMonthDays) * 7 * stockWeek;
   };
 
   const retailStockCore = calculateRetailStock(orSalesCore);
@@ -234,7 +236,9 @@ export function computeStockWeeksForRowType(
       inventory = warehouseStockCore + warehouseStockOutlet;
       break;
     case "warehouse_core":
-      weeks = calculateWeeks(warehouseStockCore, totalSalesCore, days);
+      // 창고 주력재고 ÷ [(주력 대리상판매 + 주력 직영판매) ÷ 일수 × 7]
+      const warehouseCoreSales = frsSalesCoreWindow + orSalesCoreWindow;
+      weeks = calculateWeeks(warehouseStockCore, warehouseCoreSales, days);
       inventory = warehouseStockCore;
       break;
     case "warehouse_outlet":
