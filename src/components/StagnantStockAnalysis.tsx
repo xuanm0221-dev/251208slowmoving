@@ -510,6 +510,14 @@ export default function StagnantStockAnalysis({ brand }: StagnantStockAnalysisPr
   // 채널 탭 상태 (전체, FR, OR)
   const [channelTab, setChannelTab] = useState<StagnantChannelTab>("전체");
 
+  // 검색어 상태
+  const [searchQuery, setSearchQuery] = useState<string>("");
+
+  // 시즌 필터 상태 (전체 시즌, 당시즌, 차기시즌, 과시즌, 정체재고)
+  type SeasonFilterOption = "전체 시즌" | "당시즌" | "차기시즌" | "과시즌" | "정체재고";
+  const [seasonFilter, setSeasonFilter] = useState<SeasonFilterOption>("전체 시즌");
+  const SEASON_FILTER_OPTIONS: SeasonFilterOption[] = ["전체 시즌", "당시즌", "차기시즌", "과시즌", "정체재고"];
+
   const brandCode = BRAND_CODE_MAP[brand] || "M";
 
   // 채널별 데이터 접근 헬퍼 함수
@@ -597,7 +605,7 @@ export default function StagnantStockAnalysis({ brand }: StagnantStockAnalysisPr
     };
   };
 
-  // 아이템 탭과 채널 탭에 따라 상세 테이블 데이터 필터링
+  // 아이템 탭, 채널 탭, 검색어에 따라 상세 테이블 데이터 필터링
   const filterDetailTableByItemAndChannel = (detail: DetailTableData): DetailTableData => {
     let filteredItems = detail.items;
     
@@ -612,6 +620,15 @@ export default function StagnantStockAnalysis({ brand }: StagnantStockAnalysisPr
         const channelData = getChannelData(item, channelTab);
         return channelData.stock_amt > 0;
       });
+    }
+    
+    // 검색어 필터링 (품번 또는 품명에 검색어 포함)
+    if (searchQuery.trim()) {
+      const query = searchQuery.trim().toLowerCase();
+      filteredItems = filteredItems.filter(item => 
+        item.prdt_cd.toLowerCase().includes(query) ||
+        item.prdt_nm.toLowerCase().includes(query)
+      );
     }
     
     // Total 재계산 (채널 기준)
@@ -904,44 +921,100 @@ export default function StagnantStockAnalysis({ brand }: StagnantStockAnalysisPr
               getChannelData={getChannelData}
             />
 
-            {/* 상세 테이블 4개 (아이템 탭 + 채널 탭으로 필터링) */}
+            {/* 검색창 + 시즌 필터 컨트롤 바 */}
+            <div className="mb-4 p-3 bg-white rounded-lg border border-gray-200 flex flex-wrap items-center justify-between gap-4">
+              {/* 검색창 (좌측) */}
+              <div className="flex-1 min-w-[200px] max-w-[500px]">
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+                    🔍
+                  </span>
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="품번 또는 품명으로 검색..."
+                    className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                  {searchQuery && (
+                    <button
+                      onClick={() => setSearchQuery("")}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+              </div>
+              
+              {/* 시즌 필터 드롭다운 (우측) */}
+              <div className="flex items-center gap-2">
+                <label className="text-sm font-medium text-gray-600">시즌:</label>
+                <select
+                  value={seasonFilter}
+                  onChange={(e) => setSeasonFilter(e.target.value as SeasonFilterOption)}
+                  className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white min-w-[120px]"
+                >
+                  {SEASON_FILTER_OPTIONS.map(option => (
+                    <option key={option} value={option}>{option}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* 상세 테이블 4개 (아이템 탭 + 채널 탭 + 검색어 + 시즌 필터로 제어) */}
             <div className="space-y-4">
-              <DetailTable 
-                data={filterDetailTableByItemAndChannel(data.stagnantDetail)} 
-                dimensionTab={dimensionTab}
-                sortConfig={sortConfig}
-                onSort={handleSort}
-                targetMonth={targetMonth}
-                channelTab={channelTab}
-                getChannelData={getChannelData}
-              />
-              <DetailTable 
-                data={filterDetailTableByItemAndChannel(data.currentSeasonDetail)} 
-                dimensionTab={dimensionTab}
-                sortConfig={sortConfig}
-                onSort={handleSort}
-                targetMonth={targetMonth}
-                channelTab={channelTab}
-                getChannelData={getChannelData}
-              />
-              <DetailTable 
-                data={filterDetailTableByItemAndChannel(data.nextSeasonDetail)} 
-                dimensionTab={dimensionTab}
-                sortConfig={sortConfig}
-                onSort={handleSort}
-                targetMonth={targetMonth}
-                channelTab={channelTab}
-                getChannelData={getChannelData}
-              />
-              <DetailTable 
-                data={filterDetailTableByItemAndChannel(data.pastSeasonDetail)} 
-                dimensionTab={dimensionTab}
-                sortConfig={sortConfig}
-                onSort={handleSort}
-                targetMonth={targetMonth}
-                channelTab={channelTab}
-                getChannelData={getChannelData}
-              />
+              {/* 정체재고 - 전체 (시즌 필터: 전체 시즌 또는 정체재고일 때 표시) */}
+              {(seasonFilter === "전체 시즌" || seasonFilter === "정체재고") && (
+                <DetailTable 
+                  data={filterDetailTableByItemAndChannel(data.stagnantDetail)} 
+                  dimensionTab={dimensionTab}
+                  sortConfig={sortConfig}
+                  onSort={handleSort}
+                  targetMonth={targetMonth}
+                  channelTab={channelTab}
+                  getChannelData={getChannelData}
+                />
+              )}
+              
+              {/* 당시즌 정상재고 (시즌 필터: 전체 시즌 또는 당시즌일 때 표시) */}
+              {(seasonFilter === "전체 시즌" || seasonFilter === "당시즌") && (
+                <DetailTable 
+                  data={filterDetailTableByItemAndChannel(data.currentSeasonDetail)} 
+                  dimensionTab={dimensionTab}
+                  sortConfig={sortConfig}
+                  onSort={handleSort}
+                  targetMonth={targetMonth}
+                  channelTab={channelTab}
+                  getChannelData={getChannelData}
+                />
+              )}
+              
+              {/* 차기시즌 정상재고 (시즌 필터: 전체 시즌 또는 차기시즌일 때 표시) */}
+              {(seasonFilter === "전체 시즌" || seasonFilter === "차기시즌") && (
+                <DetailTable 
+                  data={filterDetailTableByItemAndChannel(data.nextSeasonDetail)} 
+                  dimensionTab={dimensionTab}
+                  sortConfig={sortConfig}
+                  onSort={handleSort}
+                  targetMonth={targetMonth}
+                  channelTab={channelTab}
+                  getChannelData={getChannelData}
+                />
+              )}
+              
+              {/* 과시즌 정상재고 (시즌 필터: 전체 시즌 또는 과시즌일 때 표시) */}
+              {(seasonFilter === "전체 시즌" || seasonFilter === "과시즌") && (
+                <DetailTable 
+                  data={filterDetailTableByItemAndChannel(data.pastSeasonDetail)} 
+                  dimensionTab={dimensionTab}
+                  sortConfig={sortConfig}
+                  onSort={handleSort}
+                  targetMonth={targetMonth}
+                  channelTab={channelTab}
+                  getChannelData={getChannelData}
+                />
+              )}
             </div>
 
             {/* 메타 정보 */}

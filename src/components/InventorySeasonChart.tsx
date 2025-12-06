@@ -358,20 +358,24 @@ export default function InventorySeasonChart({ brand }: InventorySeasonChartProp
 
     if (mode === "전년대비") {
       // 전년 막대 위에 전년 비율, 당년 막대 위에 당년 비율
-      if (dataKey === "prev_정체재고" && item.prev_total > 0) {
-        const ratio = ((item.prev_정체재고 || 0) / item.prev_total * 100).toFixed(0);
+      const prevTotal = item.prev_total ?? 0;
+      const currTotal = item.curr_total ?? 0;
+      if (dataKey === "prev_정체재고" && prevTotal > 0) {
+        const ratio = ((item.prev_정체재고 || 0) / prevTotal * 100).toFixed(0);
         labelText = `${ratio}%`;
-      } else if (dataKey === "curr_정체재고" && item.curr_total > 0) {
-        const ratio = ((item.curr_정체재고 || 0) / item.curr_total * 100).toFixed(0);
+      } else if (dataKey === "curr_정체재고" && currTotal > 0) {
+        const ratio = ((item.curr_정체재고 || 0) / currTotal * 100).toFixed(0);
         labelText = `${ratio}%`;
       }
     } else {
       // 매출액대비 모드
-      if (dataKey === "sales_정체재고" && item.sales_total > 0) {
-        const ratio = ((item.sales_정체재고 || 0) / item.sales_total * 100).toFixed(0);
+      const salesTotal = item.sales_total ?? 0;
+      const currTotal = item.curr_total ?? 0;
+      if (dataKey === "sales_정체재고" && salesTotal > 0) {
+        const ratio = ((item.sales_정체재고 || 0) / salesTotal * 100).toFixed(0);
         labelText = `${ratio}%`;
-      } else if (dataKey === "curr_정체재고" && item.curr_total > 0) {
-        const ratio = ((item.curr_정체재고 || 0) / item.curr_total * 100).toFixed(0);
+      } else if (dataKey === "curr_정체재고" && currTotal > 0) {
+        const ratio = ((item.curr_정체재고 || 0) / currTotal * 100).toFixed(0);
         labelText = `${ratio}%`;
       }
     }
