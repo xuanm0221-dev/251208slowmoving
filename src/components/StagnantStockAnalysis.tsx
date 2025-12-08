@@ -591,14 +591,16 @@ export default function StagnantStockAnalysis({
   };
 
   // 채널별 카테고리 집계 함수
+  // totalBaseStockAmt: 전체대비% 계산 시 사용할 기준 금액 (미지정 시 items 합계 사용)
   const aggregateByCategoryForChannel = (
     items: StagnantStockItem[],
-    channel: StagnantChannelTab
+    channel: StagnantChannelTab,
+    totalBaseStockAmt?: number
   ): CategorySummary[] => {
     const categories: MidCategory[] = ["전체", "신발", "모자", "가방", "기타"];
     
-    // 전체 재고금액 계산 (채널 기준)
-    const totalChannelStockAmt = items.reduce((sum, item) => {
+    // 전체 재고금액 계산 (채널 기준) - 기준 금액이 없으면 items 합계 사용
+    const totalChannelStockAmt = totalBaseStockAmt ?? items.reduce((sum, item) => {
       const channelData = getChannelData(item, channel);
       return sum + channelData.stock_amt;
     }, 0);
@@ -636,12 +638,14 @@ export default function StagnantStockAnalysis({
   };
 
   // 채널별 요약 박스 데이터 생성
+  // totalBaseStockAmt: 전체대비% 계산 시 사용할 기준 금액 (전체 재고 금액)
   const createChannelSummaryBox = (
     title: string,
     items: StagnantStockItem[],
-    channel: StagnantChannelTab
+    channel: StagnantChannelTab,
+    totalBaseStockAmt?: number
   ): SummaryBoxData => {
-    const categories = aggregateByCategoryForChannel(items, channel);
+    const categories = aggregateByCategoryForChannel(items, channel, totalBaseStockAmt);
     const total = categories.find(c => c.category === "전체")!;
     
     return {
@@ -862,7 +866,7 @@ export default function StagnantStockAnalysis({
                           : "bg-white text-gray-700 hover:bg-gray-100"
                       }`}
                     >
-                      {tab === "전체" ? "전체(FR+OR+HQ)" : tab}
+                      {tab === "전체" ? "전체(FR+OR+HQ)" : tab === "OR" ? "HQ+OR" : tab}
                     </button>
                   ))}
                 </div>
@@ -904,31 +908,44 @@ export default function StagnantStockAnalysis({
                   <SummaryBox data={data.normalSummary} />
                 </>
               ) : (
-                <>
-                  {/* 채널별 요약 박스 생성 */}
-                  <SummaryBox 
-                    data={createChannelSummaryBox(
-                      "전체 재고", 
-                      [...data.stagnantDetail.items, ...data.currentSeasonDetail.items, ...data.nextSeasonDetail.items, ...data.pastSeasonDetail.items],
-                      channelTab
-                    )} 
-                    isTotal={true} 
-                  />
-                  <SummaryBox 
-                    data={createChannelSummaryBox(
-                      "정체재고", 
-                      data.stagnantDetail.items,
-                      channelTab
-                    )} 
-                  />
-                  <SummaryBox 
-                    data={createChannelSummaryBox(
-                      "정상재고", 
-                      [...data.currentSeasonDetail.items, ...data.nextSeasonDetail.items, ...data.pastSeasonDetail.items],
-                      channelTab
-                    )} 
-                  />
-                </>
+                (() => {
+                  // 전체 재고 금액 계산 (채널 기준) - 정체재고/정상재고의 전체대비% 계산용
+                  const allItems = [...data.stagnantDetail.items, ...data.currentSeasonDetail.items, ...data.nextSeasonDetail.items, ...data.pastSeasonDetail.items];
+                  const totalChannelStockAmt = allItems.reduce((sum, item) => {
+                    const channelData = getChannelData(item, channelTab);
+                    return sum + channelData.stock_amt;
+                  }, 0);
+                  
+                  return (
+                    <>
+                      {/* 채널별 요약 박스 생성 */}
+                      <SummaryBox 
+                        data={createChannelSummaryBox(
+                          "전체 재고", 
+                          allItems,
+                          channelTab
+                        )} 
+                        isTotal={true} 
+                      />
+                      <SummaryBox 
+                        data={createChannelSummaryBox(
+                          "정체재고", 
+                          data.stagnantDetail.items,
+                          channelTab,
+                          totalChannelStockAmt  // 전체 재고 금액 기준으로 % 계산
+                        )} 
+                      />
+                      <SummaryBox 
+                        data={createChannelSummaryBox(
+                          "정상재고", 
+                          [...data.currentSeasonDetail.items, ...data.nextSeasonDetail.items, ...data.pastSeasonDetail.items],
+                          channelTab,
+                          totalChannelStockAmt  // 전체 재고 금액 기준으로 % 계산
+                        )} 
+                      />
+                    </>
+                  );
+                })()
               )}
             </div>
 
