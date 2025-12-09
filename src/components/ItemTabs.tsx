@@ -175,23 +175,23 @@ export default function ItemTabs({
           <span className="text-xs font-medium text-gray-600 whitespace-nowrap">
             신규발주가능 금액:
           </span>
-          <span
-            className={cn(
-              "px-3 py-1.5 rounded-md text-sm font-bold min-w-[120px] text-center",
-              deltaInventory === null
-                ? "bg-gray-100 text-gray-500"
+            <span
+              className={cn(
+                "px-3 py-1.5 rounded-md text-sm font-bold min-w-[80px] text-center",
+                deltaInventory === null
+                  ? "bg-gray-100 text-gray-500"
+                  : deltaInventory >= 0
+                  ? "bg-emerald-100 text-emerald-700 border border-emerald-300"
+                  : "bg-red-100 text-red-700 border border-red-300"
+              )}
+              title="26년 3월 목표 재고 대비 증감액 (백만 위안)"
+            >
+              {deltaInventory === null
+                ? "-"
                 : deltaInventory >= 0
-                ? "bg-emerald-100 text-emerald-700 border border-emerald-300"
-                : "bg-red-100 text-red-700 border border-red-300"
-            )}
-            title="26년 3월 목표 재고 대비 증감액"
-          >
-            {deltaInventory === null
-              ? "-"
-              : deltaInventory >= 0
-              ? `+${Math.abs(deltaInventory).toLocaleString("ko-KR")}원`
-              : `△${Math.abs(deltaInventory).toLocaleString("ko-KR")}원`}
-          </span>
+                ? `+${Math.round(Math.abs(deltaInventory) / 1000000).toLocaleString("ko-KR")}M`
+                : `△${Math.round(Math.abs(deltaInventory) / 1000000).toLocaleString("ko-KR")}M`}
+            </span>
         </div>
       </div>
     </div>
