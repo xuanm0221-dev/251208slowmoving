@@ -10,6 +10,9 @@ import {
   SalesMonthData,
 } from "@/types/sales";
 
+// StockWeekWindow 타입 re-export (다른 모듈에서 사용 가능하도록)
+export type { StockWeekWindow } from "@/types/sales";
+
 // "YYYY.MM"에서 이전 달 구하기 (예: 2025.03 -> 2025.02)
 export function getPrevMonth(month: string): string {
   const [yearStr, monthStr] = month.split(".");
