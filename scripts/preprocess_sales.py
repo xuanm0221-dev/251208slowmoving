@@ -452,5 +452,178 @@ def main():
     print()
 
 
+def merge_sales_month(months_to_merge: list, new_retail_path: str = None):
+    """
+    특정 월의 판매 데이터만 병합 (기존 JSON 유지)
+    
+    Args:
+        months_to_merge: 병합할 월 목록 (예: ["2025.11"])
+        new_retail_path: 새 데이터 경로 (None이면 기존 경로 사용)
+    """
+    import copy
+    
+    retail_path = Path(new_retail_path) if new_retail_path else RETAIL_DATA_PATH
+    
+    print("=" * 60)
+    print("판매 데이터 병합 모드")
+    print("=" * 60)
+    print(f"병합할 월: {months_to_merge}")
+    print(f"데이터 경로: {retail_path}")
+    print()
+    
+    # 1. 기존 JSON 읽기
+    sales_output_file = OUTPUT_PATH / "accessory_sales_summary.json"
+    if not sales_output_file.exists():
+        print(f"[ERROR] 기존 JSON 파일이 없습니다: {sales_output_file}")
+        return
+    
+    with open(sales_output_file, 'r', encoding='utf-8') as f:
+        existing_data = json.load(f)
+    
+    print(f"기존 JSON 로드 완료: {sales_output_file}")
+    
+    # 2. 새 월 데이터 처리
+    agg_dict: Dict[Tuple, float] = defaultdict(float)
+    unexpected_categories: Set[str] = set()
+    
+    for month in months_to_merge:
+        file_path = retail_path / f"{month}.csv"
+        
+        if not file_path.exists():
+            print(f"[WARNING] 파일이 존재하지 않습니다: {file_path}")
+            continue
+        
+        print(f"처리 중 (판매): {file_path}")
+        
+        try:
+            for chunk in pd.read_csv(
+                file_path,
+                chunksize=CHUNK_SIZE,
+                encoding='utf-8',
+                usecols=RETAIL_COLUMNS,
+                dtype={
+                    "Channel 2": str,
+                    "产品品牌": str,
+                    "产品大分类": str,
+                    "产品中分类": str,
+                    "运营基准": str,
+                    "产品季节": str,
+                    "吊牌金额": float
+                }
+            ):
+                # 브랜드 필터
+                chunk = chunk[chunk["产品品牌"].isin(VALID_BRANDS)]
+                if chunk.empty:
+                    continue
+                
+                # 대분류 필터
+                chunk = chunk[chunk["产品大分类"] == TARGET_CATEGORY]
+                if chunk.empty:
+                    continue
+                
+                # 예상치 못한 중분류 확인
+                chunk_categories = set(chunk["产品中分类"].dropna().unique())
+                for cat in chunk_categories:
+                    if cat not in VALID_ITEM_CATEGORIES:
+                        unexpected_categories.add(cat)
+                
+                # operation_group 파생
+                chunk["operation_group"] = chunk.apply(
+                    lambda row: determine_operation_group(row["运营基准"], row["产品季节"]), 
+                    axis=1
+                )
+                
+                # 연월 추출
+                year = month[:4]
+                month_num = month[5:7]
+                year_month = f"{year}.{month_num}"
+                
+                # 집계
+                for _, row in chunk.iterrows():
+                    brand = row["产品品牌"]
+                    item_cat = row["产品中分类"]
+                    channel = row["Channel 2"]
+                    op_group = row["operation_group"]
+                    amount = row["吊牌金额"] if pd.notna(row["吊牌金额"]) else 0.0
+                    
+                    if channel not in ["FRS", "OR"]:
+                        continue
+                    
+                    if item_cat in VALID_ITEM_CATEGORIES:
+                        item_tabs = ["전체", item_cat]
+                    else:
+                        item_tabs = ["전체"]
+                    
+                    for item_tab in item_tabs:
+                        key_total = (brand, item_tab, year_month, "전체", op_group)
+                        agg_dict[key_total] += amount
+                        
+                        key_channel = (brand, item_tab, year_month, channel, op_group)
+                        agg_dict[key_channel] += amount
+                        
+        except Exception as e:
+            print(f"[ERROR] 파일 처리 실패: {file_path}")
+            print(f"  - {e}")
+    
+    # 3. 기존 데이터에 병합
+    print()
+    print("기존 데이터에 병합 중...")
+    
+    for key, value in agg_dict.items():
+        brand, item_tab, year_month, channel, op_group = key
+        
+        # 브랜드 키 변환
+        brand_key = {"MLB": "MLB", "MLB KIDS": "MLB_KIDS", "DISCOVERY": "DISCOVERY"}[brand]
+        
+        # 브랜드 데이터 없으면 생성
+        if brand_key not in existing_data["brands"]:
+            existing_data["brands"][brand_key] = {}
+        
+        # 아이템탭 데이터 없으면 생성
+        if item_tab not in existing_data["brands"][brand_key]:
+            existing_data["brands"][brand_key][item_tab] = {}
+        
+        # 월 데이터 없으면 생성
+        if year_month not in existing_data["brands"][brand_key][item_tab]:
+            existing_data["brands"][brand_key][item_tab][year_month] = {}
+        
+        month_data = existing_data["brands"][brand_key][item_tab][year_month]
+        
+        # 필드 키 생성 및 값 저장
+        if channel == "전체":
+            field_key = f"전체_{op_group}"
+        else:
+            field_key = f"{channel}_{op_group}"
+        
+        month_data[field_key] = round(value)
+    
+    # months 목록 업데이트
+    for month in months_to_merge:
+        if month not in existing_data["months"]:
+            existing_data["months"].append(month)
+    existing_data["months"] = sorted(existing_data["months"])
+    
+    # 4. JSON 저장
+    with open(sales_output_file, 'w', encoding='utf-8') as f:
+        json.dump(existing_data, f, ensure_ascii=False, indent=2)
+    
+    print(f"[DONE] 병합 완료: {sales_output_file}")
+    print(f"병합된 월: {months_to_merge}")
+    
+    if unexpected_categories:
+        print(f"[WARNING] 예상치 못한 중분류: {unexpected_categories}")
+
+
 if __name__ == "__main__":
-    main()
+    import sys
+    
+    # 병합 모드: python preprocess_sales.py --merge 2025.11
+    if len(sys.argv) > 1 and sys.argv[1] == "--merge":
+        months = sys.argv[2:]
+        if months:
+            # 새 경로 사용
+            merge_sales_month(months, r"D:\data\retail")
+        else:
+            print("사용법: python preprocess_sales.py --merge 2025.11 [2025.12 ...]")
+    else:
+        main()
