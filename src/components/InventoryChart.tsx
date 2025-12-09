@@ -4,6 +4,7 @@ import { useState, useMemo } from "react";
 import {
   ComposedChart,
   Bar,
+  Line,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -21,6 +22,7 @@ import {
   SalesMonthData,
 } from "@/types/sales";
 import { cn } from "@/lib/utils";
+import { computeStockWeeksForRowType, StockWeekWindow } from "@/utils/stockWeeks";
 
 interface InventoryChartProps {
   selectedTab: ItemTab;
@@ -28,6 +30,9 @@ interface InventoryChartProps {
   salesBrandData: SalesBrandData;
   channelTab: ChannelTab;
   setChannelTab: (tab: ChannelTab) => void;
+  daysInMonth: { [month: string]: number };
+  stockWeekWindow: StockWeekWindow;
+  stockWeek: number;
 }
 
 // 색상 정의 (주력: 진한 계열, 아울렛: 연한 계열)
@@ -114,6 +119,7 @@ interface TooltipProps {
       "1_판매매출_아울렛": number;
       "0_재고자산_전체"?: number;
       "1_판매매출_전체"?: number;
+      "2_재고주수"?: number | null;
     };
   }>;
 }
@@ -135,6 +141,14 @@ const CustomTooltip = ({ active, payload }: TooltipProps) => {
     const roundedValue = Math.round(value / 1_000_000);
     return roundedValue.toLocaleString() + "M";
   };
+
+  // 재고주수 포맷팅
+  const formatStockWeeks = (weeks: number | null | undefined) => {
+    if (weeks === null || weeks === undefined) return "-";
+    return Math.round(weeks).toLocaleString() + "주";
+  };
+
+  const stockWeeks = data["2_재고주수"];
 
   // 예상 구간: 전체만 표시
   if (isForecast) {
@@ -160,6 +174,13 @@ const CustomTooltip = ({ active, payload }: TooltipProps) => {
               style={{ backgroundColor: COLORS.forecast_sales }}
             ></div>
             <span>{yearLabel} 판매매출 전체: {formatValue(salesTotal)}</span>
+          </div>
+          <div className="flex items-center gap-2 border-t border-gray-200 pt-1.5 mt-1">
+            <div 
+              className="w-3 h-3 rounded-full" 
+              style={{ backgroundColor: "#DC2626" }}
+            ></div>
+            <span className="font-medium text-red-600">재고주수: {formatStockWeeks(stockWeeks)}</span>
           </div>
         </div>
       </div>
@@ -223,6 +244,13 @@ const CustomTooltip = ({ active, payload }: TooltipProps) => {
           ></div>
           <span>{yearLabel} 판매매출 주력: {formatValue(salesCore)} ({salesCorePercent}%)</span>
         </div>
+        <div className="flex items-center gap-2 border-t border-gray-200 pt-1.5 mt-1">
+          <div 
+            className="w-3 h-3 rounded-full" 
+            style={{ backgroundColor: "#DC2626" }}
+          ></div>
+          <span className="font-medium text-red-600">재고주수: {formatStockWeeks(stockWeeks)}</span>
+        </div>
       </div>
     </div>
   );
@@ -234,6 +262,9 @@ export default function InventoryChart({
   salesBrandData,
   channelTab,
   setChannelTab,
+  daysInMonth,
+  stockWeekWindow,
+  stockWeek,
 }: InventoryChartProps) {
   // 연도 탭 상태 (당년/전년)
   const [yearTab, setYearTab] = useState<YearTab>("당년");
@@ -330,10 +361,21 @@ export default function InventoryChart({
         };
     }
   };
+  // 채널탭에 따른 재고주수 rowType 매핑
+  const getStockWeeksRowType = (): string => {
+    switch (channelTab) {
+      case "ALL": return "total";
+      case "FRS": return "frs";
+      case "창고": return "warehouse";
+      default: return "total";
+    }
+  };
+
   // 차트 데이터 생성 (전년 막대 = 판매매출, 당년 막대 = 재고자산 + forecast)
   const chartData = useMemo(() => {
     // 연도 라벨 (툴팁용)
     const yearLabel = yearTab === "당년" ? "25년" : "24년";
+    const rowType = getStockWeeksRowType();
 
     return months.map((monthYm) => {
       const invData = inventoryBrandData[selectedTab]?.[monthYm];
@@ -344,6 +386,23 @@ export default function InventoryChart({
       const prev = getChannelSales(slsData);
       // "당년" 역할: 해당 월의 재고자산 (채널별, forecast 포함)
       const curr = getChannelInventory(invData, slsData);
+
+      // 재고주수 계산 (히트맵과 동일한 로직 사용)
+      let stockWeeks: number | null = null;
+      if (invData && slsData) {
+        const stockWeeksResult = computeStockWeeksForRowType(
+          monthYm,
+          rowType,
+          invData,
+          slsData,
+          inventoryBrandData[selectedTab] || {},
+          salesBrandData[selectedTab] || {},
+          daysInMonth,
+          stockWeekWindow,
+          stockWeek
+        );
+        stockWeeks = stockWeeksResult?.weeks ?? null;
+      }
 
       // 월 레이블을 "25.01", "26.01" 형식으로 변환, 예상 월은 (F) 추가
       const [yearStr, monthStr] = monthYm.split(".");
@@ -364,6 +423,7 @@ export default function InventoryChart({
           "1_판매매출_전체": prev.core,  // 전체 판매매출
           "1_판매매출_주력": 0,
           "1_판매매출_아울렛": 0,
+          "2_재고주수": stockWeeks,
         };
       }
 
@@ -376,50 +436,61 @@ export default function InventoryChart({
         "0_재고자산_아울렛": curr.outlet,  // 재고자산 아울렛
         "1_판매매출_주력": prev.core,      // 판매매출 주력
         "1_판매매출_아울렛": prev.outlet,  // 판매매출 아울렛
+        "2_재고주수": stockWeeks,
       };
     });
-  }, [months, inventoryBrandData, salesBrandData, selectedTab, channelTab, yearTab]);
+  }, [months, inventoryBrandData, salesBrandData, selectedTab, channelTab, yearTab, daysInMonth, stockWeekWindow, stockWeek]);
 
-  // 재고자산 최대값 계산 (동적 Y축 범위 설정용) - 2024년+2025년 모두 고려하여 동일한 Y축 범위 유지
-  const maxInventory = useMemo(() => {
-    let max = 0;
+  // Y축 최대값 계산 (재고자산 + 판매매출 통합) - 2024년+2025년 모두 고려하여 동일한 Y축 범위 유지
+  const maxYAxis = useMemo(() => {
+    let maxInv = 0;
+    let maxSales = 0;
     
-    // 2024년 + 2025년 모든 월 데이터에서 최대값 계산
-    const allMonths = Object.keys(inventoryBrandData[selectedTab] || {}).filter(
+    // 2024년 + 2025년 모든 월 데이터에서 재고자산 최대값 계산
+    const allInvMonths = Object.keys(inventoryBrandData[selectedTab] || {}).filter(
       (m) => m >= "2024.01" && m <= "2026.04"
     );
     
-    allMonths.forEach((monthYm) => {
+    allInvMonths.forEach((monthYm) => {
       const invData = inventoryBrandData[selectedTab]?.[monthYm];
       const slsData = salesBrandData[selectedTab]?.[monthYm];
       if (invData) {
         const inventory = getChannelInventory(invData, slsData);
         const total = inventory.core + inventory.outlet;
-        if (total > max) max = total;
+        if (total > maxInv) maxInv = total;
       }
     });
-    return Math.max(Math.ceil(max * 1.1), 100);
-  }, [inventoryBrandData, salesBrandData, selectedTab, channelTab]);
-
-  // 판매매출 최대값 계산 (동적 Y축 범위 설정용) - 2024년+2025년 모두 고려하여 동일한 Y축 범위 유지
-  const maxSales = useMemo(() => {
-    let max = 0;
     
-    // 2024년 + 2025년 모든 월 데이터에서 최대값 계산
-    const allMonths = Object.keys(salesBrandData[selectedTab] || {}).filter(
+    // 2024년 + 2025년 모든 월 데이터에서 판매매출 최대값 계산
+    const allSalesMonths = Object.keys(salesBrandData[selectedTab] || {}).filter(
       (m) => m >= "2024.01" && m <= "2026.04"
     );
     
-    allMonths.forEach((monthYm) => {
+    allSalesMonths.forEach((monthYm) => {
       const slsData = salesBrandData[selectedTab]?.[monthYm];
       if (slsData) {
         const sales = getChannelSales(slsData);
         const total = sales.core + sales.outlet;
-        if (total > max) max = total;
+        if (total > maxSales) maxSales = total;
       }
     });
-    return Math.max(Math.ceil(max * 1.3), 100);
-  }, [salesBrandData, selectedTab, channelTab]);
+    
+    // 재고자산과 판매매출 중 최대값 사용
+    const max = Math.max(maxInv, maxSales);
+    return Math.max(Math.ceil(max * 1.1), 100);
+  }, [inventoryBrandData, salesBrandData, selectedTab, channelTab]);
+
+  // 재고주수 최대값 계산 (우측 Y축용)
+  const maxStockWeeks = useMemo(() => {
+    let max = 0;
+    chartData.forEach((d) => {
+      const weeks = d["2_재고주수"];
+      if (weeks !== null && weeks !== undefined && weeks > max) {
+        max = weeks;
+      }
+    });
+    return Math.max(Math.ceil(max * 1.2), 10);
+  }, [chartData]);
 
   const itemLabel = ITEM_LABELS[selectedTab];
   const channelLabel = CHANNEL_LABELS[channelTab];
@@ -427,6 +498,11 @@ export default function InventoryChart({
   // Y축 포맷 (M 단위 숫자, 천단위 콤마, 소수점 없음)
   const formatYAxis = (value: number) => {
     return Math.round(value / 1_000_000).toLocaleString();
+  };
+
+  // 재고주수 Y축 포맷
+  const formatStockWeeksYAxis = (value: number) => {
+    return Math.round(value).toLocaleString() + "주";
   };
 
   return (
@@ -492,33 +568,33 @@ export default function InventoryChart({
               tick={{ fontSize: 12, fill: "#6b7280" }}
               axisLine={{ stroke: "#d1d5db" }}
             />
-            {/* 왼쪽 Y축: 재고자산 (M) - 2024+2025 동일 범위 */}
+            {/* 좌측 Y축: 재고자산 + 판매매출 통합 (M) */}
             <YAxis 
               yAxisId="left"
               tick={{ fontSize: 12, fill: "#6b7280" }}
               axisLine={{ stroke: "#d1d5db" }}
               tickFormatter={formatYAxis}
-              domain={[0, maxInventory]}
+              domain={[0, maxYAxis]}
               label={{ 
-                value: "재고자산 (M)", 
+                value: "금액 (M)", 
                 angle: -90, 
                 position: "insideLeft",
                 style: { fontSize: 12, fill: "#6b7280" }
               }}
             />
-            {/* 오른쪽 Y축: 판매매출 (M) - 동적 범위 (2배로 확대하여 막대기 길이를 반으로) */}
+            {/* 우측 Y축: 재고주수 */}
             <YAxis 
               yAxisId="right"
               orientation="right"
-              tick={{ fontSize: 12, fill: "#6B7280" }}
-              axisLine={{ stroke: "#6B7280" }}
-              tickFormatter={formatYAxis}
-              domain={[0, maxSales * 2]}  // Y축 범위를 2배로 확대하여 막대기 길이를 상대적으로 반으로
+              tick={{ fontSize: 12, fill: "#DC2626" }}
+              axisLine={{ stroke: "#DC2626" }}
+              tickFormatter={formatStockWeeksYAxis}
+              domain={[0, maxStockWeeks]}
               label={{ 
-                value: "판매매출 (M)", 
+                value: "재고주수", 
                 angle: 90, 
                 position: "insideRight",
-                style: { fontSize: 12, fill: "#6B7280" }
+                style: { fontSize: 12, fill: "#DC2626" }
               }}
             />
             <Tooltip 
@@ -534,7 +610,7 @@ export default function InventoryChart({
               name="25년 재고자산 전체 (예상)"
             />
             <Bar 
-              yAxisId="right"
+              yAxisId="left"
               dataKey="1_판매매출_전체" 
               stackId="sales"
               fill={COLORS.forecast_sales}
@@ -556,20 +632,32 @@ export default function InventoryChart({
               fill={COLORS.curr_outlet}
               name="25년 재고자산 아울렛"
             />
-            {/* 25년 판매매출 막대 (주력 + 아울렛 스택) - 나중에 표시, 오른쪽 Y축 사용 */}
+            {/* 25년 판매매출 막대 (주력 + 아울렛 스택) - 좌측 Y축 사용 (통합) */}
             <Bar 
-              yAxisId="right"
+              yAxisId="left"
               dataKey="1_판매매출_주력" 
               stackId="sales" 
               fill={COLORS.prev_core}
               name="25년 판매매출 주력"
             />
             <Bar 
-              yAxisId="right"
+              yAxisId="left"
               dataKey="1_판매매출_아울렛" 
               stackId="sales" 
               fill={COLORS.prev_outlet}
               name="25년 판매매출 아울렛"
+            />
+            {/* 재고주수 꺾은선 그래프 - 우측 Y축 사용 */}
+            <Line
+              yAxisId="right"
+              type="monotone"
+              dataKey="2_재고주수"
+              stroke="#DC2626"
+              strokeWidth={2}
+              dot={{ r: 4, fill: "#DC2626" }}
+              activeDot={{ r: 6, fill: "#DC2626" }}
+              name="재고주수"
+              connectNulls={false}
             />
           </ComposedChart>
         </ResponsiveContainer>
@@ -610,6 +698,14 @@ export default function InventoryChart({
             <div className="flex items-center gap-1">
               <span className="w-4 h-3 rounded" style={{ backgroundColor: COLORS.prev_outlet }}></span>
               <span>아울렛</span>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="font-medium">재고주수:</span>
+            <div className="flex items-center gap-1">
+              <span className="w-4 h-0.5" style={{ backgroundColor: "#DC2626" }}></span>
+              <span className="w-2 h-2 rounded-full" style={{ backgroundColor: "#DC2626" }}></span>
+              <span>{channelTab === "ALL" ? "전체" : channelTab === "FRS" ? "대리상" : "창고"}주수</span>
             </div>
           </div>
         </div>

@@ -379,7 +379,7 @@ export default function BrandSalesPage({ brand, title }: BrandSalesPageProps) {
             )}
 
             {/* 1.6. 월별 재고자산 추이 막대차트 */}
-            {inventoryBrandDataForChart && salesBrandData && (
+            {inventoryBrandDataForChart && salesBrandData && inventoryData?.daysInMonth && (
               <InventoryChart
                 selectedTab={selectedTab}
                 // 선택 탭에는 forecast 재고자산(25.11~26.04) 포함
@@ -387,6 +387,9 @@ export default function BrandSalesPage({ brand, title }: BrandSalesPageProps) {
                 salesBrandData={salesBrandData}
                 channelTab={channelTab}
                 setChannelTab={setChannelTab}
+                daysInMonth={inventoryData.daysInMonth}
+                stockWeekWindow={stockWeekWindow}
+                stockWeek={stockWeeks[selectedTab]}
               />
             )}
 

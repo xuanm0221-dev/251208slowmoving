@@ -302,6 +302,8 @@ function DetailTable({
   totalItemCount,
   totalStockAmt,
   onItemClick,
+  thresholdPct,
+  categoryStockAmtMap,
 }: {
   data: DetailTableData;
   dimensionTab: DimensionTab;
@@ -313,6 +315,8 @@ function DetailTable({
   totalItemCount: number;  // 전체 품번 수 (4개 테이블 합계)
   totalStockAmt: number;   // 전체 재고 금액
   onItemClick?: (item: StagnantStockItem) => void;  // 품번 클릭 핸들러
+  thresholdPct?: number;  // 정체재고 기준 % (정체재고 테이블만 사용)
+  categoryStockAmtMap?: Map<string, number>;  // 중분류별 전체 재고금액 (정체재고 기준 계산용)
 }) {
   const daysInMonth = getDaysInMonth(targetMonth);
 
@@ -396,11 +400,29 @@ function DetailTable({
     : dimensionTab === "사이즈" ? "품번_사이즈"
     : "품번_컬러_사이즈";
 
+  // 정체재고 기준금액 표시 (정체재고 테이블만)
+  const getThresholdDisplay = () => {
+    if (data.seasonGroup !== "정체재고" || !thresholdPct || !categoryStockAmtMap) {
+      return "";
+    }
+    
+    const categories = ["신발", "모자", "가방"];
+    const thresholds = categories.map(cat => {
+      const catStockAmt = categoryStockAmtMap.get(cat) || 0;
+      const threshold = catStockAmt * (thresholdPct / 100);
+      // K 단위로 표시 (1000으로 나눔)
+      const thresholdK = Math.round(threshold / 1000);
+      return `${cat} ${thresholdK.toLocaleString("ko-KR")}K미만`;
+    });
+    
+    return ` | ${thresholds.join(", ")}`;
+  };
+
   return (
     <div className={`rounded-lg border ${borderColor} ${bgColor} overflow-hidden`}>
       <div className="p-3 border-b ${borderColor}">
         <h4 className={`text-md font-bold ${titleColor}`}>
-          {data.title === "정체재고 - 전체" ? "정체재고" : data.title} | 전체 {formatNumber(totalItemCount)}개 중 {formatNumber(data.items.length)}개 표시 | 재고 {formatAmountM(data.totalRow.stock_amt)} ({formatAmountM(totalStockAmt)} 중 {totalStockAmt > 0 ? formatPercent((data.totalRow.stock_amt / totalStockAmt) * 100, 1) : "0%"})
+          {data.title === "정체재고 - 전체" ? "정체재고" : data.title} | 전체 {formatNumber(totalItemCount)}개 중 {formatNumber(data.items.length)}개 표시 | 재고 {formatAmountM(data.totalRow.stock_amt)} ({formatAmountM(totalStockAmt)} 중 {totalStockAmt > 0 ? formatPercent((data.totalRow.stock_amt / totalStockAmt) * 100, 1) : "0%"}){getThresholdDisplay()}
         </h4>
       </div>
       
@@ -1184,6 +1206,18 @@ export default function StagnantStockAnalysis({
                 return sum + channelData.stock_amt;
               }, 0);
 
+              // 정체재고 기준금액 계산용: 중분류별 전체 재고금액 맵 생성
+              const categoryStockAmtMap = new Map<string, number>();
+              const categories = ["신발", "모자", "가방", "기타"];
+              categories.forEach(cat => {
+                const catItems = allDetailItems.filter(item => item.mid_category_kr === cat);
+                const catTotal = catItems.reduce((sum, item) => {
+                  const channelData = getChannelData(item, channelTab);
+                  return sum + channelData.stock_amt;
+                }, 0);
+                categoryStockAmtMap.set(cat, catTotal);
+              });
+
               return (
                 <div className="space-y-4">
                   {/* 정체재고 - 전체 (시즌 필터: 전체 시즌 또는 정체재고일 때 표시) */}
@@ -1199,6 +1233,8 @@ export default function StagnantStockAnalysis({
                       totalItemCount={totalItemCount}
                       totalStockAmt={totalStockAmt}
                       onItemClick={handleItemClick}
+                      thresholdPct={thresholdPct}
+                      categoryStockAmtMap={categoryStockAmtMap}
                     />
                   )}
                   
