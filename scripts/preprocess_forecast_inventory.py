@@ -10,11 +10,11 @@ from pathlib import Path
 from typing import Dict, Set
 
 # ========== 설정 ==========
-FORECAST_DATA_PATH = Path(r"C:\3.accweekcover\data\inventory(forecast)")
+FORECAST_DATA_PATH = Path(r"D:\data\inventory(forecast)")
 OUTPUT_PATH = Path(__file__).parent.parent / "public" / "data"
 
-# 처리할 월 목록 (파일명 형식: "25.11.csv")
-FORECAST_MONTH_FILES = ["25.11", "25.12", "26.01", "26.02", "26.03"]
+# 처리할 월 목록 (파일명 형식: "25.12.csv")
+FORECAST_MONTH_FILES = ["25.12", "26.01", "26.02", "26.03"]
 
 VALID_BRANDS = {"MLB", "MLB KIDS", "DISCOVERY"}
 VALID_ITEM_CATEGORIES = {"Shoes", "Headwear", "Bag", "Acc_etc"}
