@@ -14,7 +14,7 @@ import calendar
 
 # ========== 설정 ==========
 CHUNK_SIZE = 200_000  # 청크 크기 (메모리 여유에 따라 조정 가능)
-RETAIL_DATA_PATH = Path(r"C:\3.accweekcover\data\retail")
+RETAIL_DATA_PATH = Path(r"D:\data\retail")
 INVENTORY_DATA_PATH = Path(r"C:\3.accweekcover\data\inventory")
 OUTPUT_PATH = Path(__file__).parent.parent / "public" / "data"
 
