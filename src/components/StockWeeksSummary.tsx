@@ -51,7 +51,7 @@ const SUMMARY_ROWS = [
   { label: "- 직영", level: 2, type: "retail_core" },        // 상세 level 2 (새로 추가)
   { label: "ㄴ 아울렛상품", level: 1, type: "total_outlet" }, // 헤더 level 1
   { label: "- 대리상", level: 2, type: "frs_outlet" },      // 상세 level 2
-  { label: "- 직영", level: 2, type: "warehouse_outlet" },  // 상세 level 2
+  { label: "- 직영", level: 2, type: "warehouse_outlet" },  // 창고 아울렛 (직영에서만 소진)
 ];
 
 // 2025년 월 옵션

@@ -29,16 +29,16 @@ export default function InventoryTable({ data, months, daysInMonth, stockWeek }:
     const hqOrOutletWon = monthData.HQ_OR_outlet || 0;
 
     // 직영재고 계산
-    // 주력: OR판매 기반으로 계산
+    // 주력: OR판매 기반으로 계산 (stockWeek 적용)
     const retailStockCore = calculateRetailStock(monthData.OR_sales_core || 0, days);
-    // 아울렛: 본사 아울렛 재고 전체 (아울렛은 전량 직영에서 판매)
-    const retailStockOutlet = hqOrOutletWon;
+    // 아울렛: 0 (아울렛은 버퍼 개념 없음, stockWeek 미적용)
+    const retailStockOutlet = 0;
 
     // 창고재고 계산 (본사재고 - 직영재고)
     // 주력: 본사재고 - 직영판매예정 = 창고재고
     const warehouseStockCore = hqOrCoreWon - retailStockCore;
-    // 아울렛: 창고재고 = 0 (아울렛은 대리상 출고 없이 전량 직영 판매)
-    const warehouseStockOutlet = 0;
+    // 아울렛: 본사 아울렛 재고 전체 = 창고재고 (버퍼 개념 없이 전량 창고)
+    const warehouseStockOutlet = hqOrOutletWon;
 
     if (dataKey === "전체") {
       // 예상 구간: 전체 필드가 있으면 그것을 사용 (주력/아울렛 구분 없음)

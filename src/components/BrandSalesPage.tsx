@@ -479,7 +479,7 @@ export default function BrandSalesPage({ brand, title }: BrandSalesPageProps) {
                   {/* 재고주수 계산식 범례 */}
                   <div className="mt-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
                     <h3 className="text-xs font-medium text-yellow-600 mb-2">📅 재고주수 계산식</h3>
-                    <div className="grid md:grid-cols-2 gap-4 text-xs">
+                    <div className="grid md:grid-cols-3 gap-4 text-xs">
                       <div className="space-y-2">
                         <div>
                           <span className="text-gray-600">1. 전체주수 = 전체재고 ÷ (전체판매 ÷ 일수 × 7)</span>
@@ -490,9 +490,14 @@ export default function BrandSalesPage({ brand, title }: BrandSalesPageProps) {
                       </div>
                       <div>
                         <div className="text-gray-600 space-y-1">
-                          <div>3. 창고재고주수(전체)=창고재고(전체) ÷ [(주력 대리상판매 + 주력 직영판매 + 아울렛 직영판매) ÷ 일수 × 7]</div>
-                          <div className="pl-2">ㄴ 주력 재고주수=창고 주력재고 ÷ [(주력 대리상판매 + 주력 직영판매) ÷ 일수 × 7)]</div>
-                          <div className="pl-2">ㄴ 아울렛 재고주수 = 창고 아울렛재고 ÷ (아울렛상품 직영판매 ÷ 일수 × 7)</div>
+                          <div>3. 직영주력상품 = stockWeek (직영판매예정재고 주수, 주력만 적용)</div>
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-gray-600 space-y-1">
+                          <div>4. 창고주수(전체) = 창고재고(전체) ÷ [(주력 대리상판매 + 주력 직영판매 + 아울렛 직영판매) ÷ 일수 × 7]</div>
+                          <div className="pl-2">ㄴ 주력 = 창고 주력재고 ÷ [(주력 대리상판매 + 주력 직영판매) ÷ 일수 × 7]</div>
+                          <div className="pl-2">ㄴ 아울렛 = 본사아울렛재고 ÷ (아울렛 직영판매 ÷ 일수 × 7)</div>
                         </div>
                       </div>
                     </div>

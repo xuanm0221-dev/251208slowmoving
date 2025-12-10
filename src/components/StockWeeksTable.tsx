@@ -40,7 +40,8 @@ const STOCK_WEEKS_ROWS = [
   { label: "대리상주수", isHeader: true, indent: false, type: "frs", hasHeatmap: false },
   { label: "ㄴ 주력상품", isHeader: false, indent: true, type: "frs_core", hasHeatmap: true },
   { label: "ㄴ 아울렛상품", isHeader: false, indent: true, type: "frs_outlet", hasHeatmap: true },
-  { label: "창고재고주수", isHeader: true, indent: false, type: "warehouse", hasHeatmap: false },
+  { label: "직영주력상품", isHeader: true, indent: false, type: "retail_core", hasHeatmap: false },
+  { label: "창고주수", isHeader: true, indent: false, type: "warehouse", hasHeatmap: false },
   { label: "ㄴ 주력상품", isHeader: false, indent: true, type: "warehouse_core", hasHeatmap: false },
   { label: "ㄴ 아울렛상품", isHeader: false, indent: true, type: "warehouse_outlet", hasHeatmap: false },
 ];
@@ -75,13 +76,13 @@ export default function StockWeeksTable({
   // 선택된 행인지 확인하는 함수
   const isRowSelected = (rowType: string): boolean => {
     if (productTypeTab === "전체") {
-      // 전체 선택 시: "전체주수"와 "대리상주수" 헤더 행 표시
+      // 전체 선택 시: "전체주수", "대리상주수" 헤더 행 표시
       return rowType === "total" || rowType === "frs";
     } else if (productTypeTab === "주력") {
-      // 주력상품 선택 시: "전체주수 아래의 주력상품", "대리상주수 아래의 주력상품"
-      return rowType === "total_core" || rowType === "frs_core";
+      // 주력상품 선택 시 (직영주력상품 포함)
+      return rowType === "total_core" || rowType === "frs_core" || rowType === "retail_core";
     } else if (productTypeTab === "아울렛") {
-      // 아울렛상품 선택 시: "전체주수 아래의 아울렛상품", "대리상주수 아래의 아울렛상품"
+      // 아울렛상품 선택 시
       return rowType === "total_outlet" || rowType === "frs_outlet";
     }
     return false;

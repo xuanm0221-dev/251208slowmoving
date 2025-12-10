@@ -172,12 +172,16 @@ export function computeStockWeeksForRowType(
     return (orSales / currentMonthDays) * 7 * stockWeek;
   };
 
+  // 직영재고 계산
+  // 주력: OR판매 기반으로 계산 (stockWeek 적용)
   const retailStockCore = calculateRetailStock(orSalesCore);
-  const retailStockOutlet = calculateRetailStock(orSalesOutlet);
+  // 아울렛: 0 (아울렛은 버퍼 개념 없음, stockWeek 미적용)
+  const retailStockOutlet = 0;
 
+  // 창고재고 계산 (본사재고 - 직영재고)
   // 주력: 본사재고 - 직영판매예정 = 창고재고
   const warehouseStockCore = hqOrStockCore - retailStockCore;
-  // 아울렛: 본사재고 전체 = 창고재고 (직영판매예정 차감 안함)
+  // 아울렛: 본사 아울렛 재고 전체 = 창고재고 (버퍼 개념 없이 전량 창고)
   const warehouseStockOutlet = hqOrStockOutlet;
 
   const totalSalesCore = totalSalesCoreWindow;
@@ -230,8 +234,25 @@ export function computeStockWeeksForRowType(
       weeks = calculateWeeks(frsStockOutlet, frsSalesOutlet, days);
       inventory = frsStockOutlet;
       break;
+    case "retail":
+      // 직영주수(전체) = 직영재고(전체) ÷ (OR판매 전체 ÷ 일수 × 7)
+      const retailStock = retailStockCore + retailStockOutlet;
+      const orSalesTotal = orSalesCoreWindow + orSalesOutletWindow;
+      weeks = calculateWeeks(retailStock, orSalesTotal, days);
+      inventory = retailStock;
+      break;
+    case "retail_core":
+      // 직영주수(주력) = 직영재고(주력) ÷ (OR판매 주력 ÷ 일수 × 7) = stockWeek
+      weeks = calculateWeeks(retailStockCore, orSalesCoreWindow, days);
+      inventory = retailStockCore;
+      break;
+    case "retail_outlet":
+      // 직영주수(아울렛) = 직영재고(아울렛) ÷ (OR판매 아울렛 ÷ 일수 × 7)
+      weeks = calculateWeeks(retailStockOutlet, orSalesOutletWindow, days);
+      inventory = retailStockOutlet;
+      break;
     case "warehouse":
-      // 창고재고주수(전체) = 창고재고(전체) ÷ [(주력상품 대리상판매 + 주력상품 직영판매 + 아울렛상품 직영판매) ÷ 일수 × 7]
+      // 창고주수(전체) = 창고재고(전체) ÷ [(주력상품 대리상판매 + 주력상품 직영판매 + 아울렛상품 직영판매) ÷ 일수 × 7]
       const warehouseSales = warehouseSalesWindow;
       weeks = calculateWeeks(
         warehouseStockCore + warehouseStockOutlet,
