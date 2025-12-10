@@ -13,7 +13,7 @@ import calendar
 
 # ========== 설정 ==========
 CHUNK_SIZE = 200_000
-INVENTORY_DATA_PATH = Path(r"C:\3.accweekcover\data\inventory")
+INVENTORY_DATA_PATH = Path(r"D:\data\inventory")
 SALES_JSON_PATH = Path(__file__).parent.parent / "public" / "data" / "accessory_sales_summary.json"
 OUTPUT_PATH = Path(__file__).parent.parent / "public" / "data"
 

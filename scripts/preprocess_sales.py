@@ -15,7 +15,7 @@ import calendar
 # ========== 설정 ==========
 CHUNK_SIZE = 200_000  # 청크 크기 (메모리 여유에 따라 조정 가능)
 RETAIL_DATA_PATH = Path(r"D:\data\retail")
-INVENTORY_DATA_PATH = Path(r"C:\3.accweekcover\data\inventory")
+INVENTORY_DATA_PATH = Path(r"D:\data\inventory")
 OUTPUT_PATH = Path(__file__).parent.parent / "public" / "data"
 
 # 분석 기간
@@ -75,8 +75,8 @@ def determine_operation_group(op_basis: str, season: str) -> str:
     op_basis = str(op_basis).strip() if pd.notna(op_basis) else ""
     season = str(season).strip() if pd.notna(season) else ""
     
-    # 运营基准이 INTRO 또는 FOCUS이면 주력
-    if op_basis in ["INTRO", "FOCUS"]:
+    # 运营基准이 INTRO, FOCUS, 26SS이면 주력
+    if op_basis in ["INTRO", "FOCUS", "26SS"]:
         return "core"
     
     # 运营基准이 빈값이고 시즌 문자열 포함하면 주력
